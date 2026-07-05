@@ -1,0 +1,6 @@
+Usa siempre Python 3.11+ con tipado estricto (Type Hints).
+Para la API, usa FastAPI con manejadores asíncronos (async/await).
+Para los modelos de datos, usa Pydantic v2.
+Todas las peticiones HTTP externas hacia el backend de .NET deben hacerse usando `httpx.AsyncClient` de manera asíncrona dentro de las Tools de LangChain.
+El grafo de LangGraph debe usar un StateGraph estructurado y persistir el estado usando un MemorySaver (en memoria) indexado por el sessionId del usuario.
+Maneja excepciones de forma explícita devolviendo códigos de estado HTTP correctos (ej. 503 si el backend de .NET no responde).
