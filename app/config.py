@@ -17,7 +17,7 @@ class Settings(BaseSettings):
         ...,
         description="API key de Google AI Studio (Gemini).",
     )
-    GOOGLE_MODEL: str = "gemini-1.5-flash"
+    GOOGLE_MODEL: str = "gemini-2.5-flash"
 
 
 @lru_cache

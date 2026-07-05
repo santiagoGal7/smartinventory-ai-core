@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
+qa_*.py
+qa_e2e_output.txt
