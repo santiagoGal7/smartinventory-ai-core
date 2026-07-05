@@ -185,6 +185,8 @@ class AgentGraphState(BaseModel):
     sale_origin: Annotated[SaleOriginName, Field(alias="saleOrigin")] = SaleOriginName.CHATBOT
     invoice_number: Annotated[str | None, Field(alias="invoiceNumber")] = None
     last_extraction: Annotated[OrderTextExtraction | None, Field(alias="lastExtraction")] = None
+    incoming_message: Annotated[str, Field(alias="incomingMessage", default="")]
+    response_text: Annotated[str, Field(alias="responseText", default="")]
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
