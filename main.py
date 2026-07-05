@@ -16,7 +16,6 @@ from app.schemas import (
     AgentChatResponse,
     AgentConversationState,
     AgentGraphState,
-    SaleOriginName,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +72,7 @@ async def _process_chat_turn(request: AgentChatRequest) -> AgentChatResponse:
         return AgentChatResponse(
             response=final_state.response_text,
             state=contract_state,
-            sale_origin=SaleOriginName.CHATBOT,
+            sale_origin="CHATBOT",
             invoice_number=invoice_number,
         )
 
