@@ -186,3 +186,25 @@ class AgentGraphState(BaseModel):
     invoice_number: Annotated[str | None, Field(alias="invoiceNumber")] = None
     last_extraction: Annotated[OrderTextExtraction | None, Field(alias="lastExtraction")] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+# Modelos internos del grafo LangGraph (nodo → nodo). No viajan por HTTP hacia el cliente
+# ni hacia el backend .NET, por lo que usan snake_case sin alias camelCase.
+class InventoryCheckResult(BaseModel):
+    """Resultado de verificar stock de una variante antes de consolidar la venta."""
+
+    product_variant_id: UUID
+    requested_quantity: int
+    available: bool
+    available_quantity: int | None = None
+    error_message: str | None = None
+
+
+class SaleConsolidationResult(BaseModel):
+    """Resultado de registrar la venta en el backend de negocio."""
+
+    success: bool
+    invoice_number: str | None = None
+    sale_id: UUID | None = None
+    total: float | None = None
+    error_message: str | None = None
