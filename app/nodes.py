@@ -5,9 +5,8 @@ import asyncio
 from typing import Any
 from uuid import UUID
 
-from langchain_openai import ChatOpenAI
-
 from app.config import settings
+from app.llm import build_gemini_chat_model
 from app.schemas import (
     AgentConversationState,
     AgentGraphState,
@@ -193,11 +192,9 @@ async def extract_intent(state: AgentGraphState) -> dict[str, Any]:
             "negación clara y confirmation=null si la respuesta es ambigua."
         )
 
-    llm = ChatOpenAI(
-        model=settings.OPENAI_MODEL,
-        temperature=0,
-        api_key=settings.OPENAI_API_KEY,
-    ).with_structured_output(OrderTextExtraction)
+    llm = build_gemini_chat_model(temperature=0).with_structured_output(
+        OrderTextExtraction
+    )
 
     extraction = await llm.ainvoke(
         [
@@ -483,11 +480,7 @@ async def general_response(state: AgentGraphState) -> dict[str, Any]:
     extraction = state.last_extraction
     intent = extraction.intent if extraction else OrderIntent.UNKNOWN
 
-    llm = ChatOpenAI(
-        model=settings.OPENAI_MODEL,
-        temperature=0.3,
-        api_key=settings.OPENAI_API_KEY,
-    )
+    llm = build_gemini_chat_model(temperature=0.3)
 
     system_prompt = (
         "Eres un asistente amable de una tienda de inventario. "

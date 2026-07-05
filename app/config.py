@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,8 +13,11 @@ class Settings(BaseSettings):
 
     NET_BACKEND_URL: str = "http://localhost:5083"
     NET_BACKEND_TIMEOUT_SECONDS: float = 5.0
-    OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    GOOGLE_API_KEY: str = Field(
+        ...,
+        description="API key de Google AI Studio (Gemini).",
+    )
+    GOOGLE_MODEL: str = "gemini-1.5-flash"
 
 
 @lru_cache

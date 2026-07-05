@@ -23,6 +23,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="SmartInventory AI - Chatbot Service")
 
+
+@app.get("/")
+async def root() -> dict[str, str]:
+    """Health check para verificar que el microservicio está activo."""
+
+    return {
+        "service": "SmartInventory AI - Chatbot Service",
+        "status": "ok",
+    }
+
+
 _session_locks: dict[str, asyncio.Lock] = {}
 _locks_guard = asyncio.Lock()
 
