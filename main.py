@@ -8,6 +8,8 @@ from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from google.genai.errors import ClientError
+from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
 
 from app.graph import build_thread_config, compiled_graph
 from app.nodes import to_contract_state
@@ -36,6 +38,18 @@ async def root() -> dict[str, str]:
 
 _session_locks: dict[str, asyncio.Lock] = {}
 _locks_guard = asyncio.Lock()
+
+
+def _is_gemini_rate_limit_error(exc: BaseException) -> bool:
+    """True si la cadena de excepciones incluye un 429 RESOURCE_EXHAUSTED del SDK google-genai."""
+
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, ClientError):
+            if current.code == 429 or current.status == "RESOURCE_EXHAUSTED":
+                return True
+        current = current.__cause__ or current.__context__
+    return False
 
 
 async def _get_session_lock(session_id: str) -> asyncio.Lock:
@@ -97,6 +111,32 @@ async def _handle_chat_request(request: AgentChatRequest) -> AgentChatResponse:
         raise HTTPException(
             status_code=503,
             detail="Servicio de negocio no disponible",
+        ) from None
+    except (ClientError, ChatGoogleGenerativeAIError) as exc:
+        if _is_gemini_rate_limit_error(exc):
+            logger.warning(
+                "Cuota/rate-limit Gemini (429 RESOURCE_EXHAUSTED) para session_id=%s",
+                request.session_id,
+            )
+            # Mantener el contrato JSON intacto ante fallos transitorios conocidos, en vez de
+            # forzar a .NET a improvisar un error genérico hacia React; comunica honestamente
+            # sin alucinar stock ni ventas.
+            return AgentChatResponse(
+                response=(
+                    "Estoy teniendo problemas técnicos temporales para procesar tu mensaje. "
+                    "Por favor, intenta de nuevo en unos minutos."
+                ),
+                state="START",
+                sale_origin="CHATBOT",
+                invoice_number=None,
+            )
+        logger.exception(
+            "Error de Gemini procesando chat para session_id=%s",
+            request.session_id,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Error interno del agente conversacional",
         ) from None
     except Exception:
         logger.exception(
