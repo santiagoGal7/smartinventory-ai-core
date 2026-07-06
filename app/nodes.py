@@ -97,14 +97,11 @@ def _parse_search_results(raw: str) -> list[dict[str, Any]] | None:
 
 
 def _build_item_search_query(item: ExtractedOrderItem) -> str:
-    parts = [
-        item.product_name,
-        item.sku,
-        item.size,
-        item.color,
-    ]
-    query = " ".join(part.strip() for part in parts if part and part.strip())
-    return query or "producto"
+    if item.product_name and item.product_name.strip():
+        return item.product_name.strip()
+    if item.sku and item.sku.strip():
+        return item.sku.strip()
+    return "producto"
 
 
 def _filter_item_matches(
@@ -163,8 +160,18 @@ def _format_inventory_failure(result: InventoryCheckResult) -> str:
     )
 
 
-async def _invoke_product_search(query: str) -> str:
-    tool_result = await buscar_producto_semantico.ainvoke({"query": query})
+async def _invoke_product_search(
+    query: str,
+    *,
+    size: str | None = None,
+    color: str | None = None,
+) -> str:
+    payload: dict[str, str] = {"query": query}
+    if size:
+        payload["size"] = size
+    if color:
+        payload["color"] = color
+    tool_result = await buscar_producto_semantico.ainvoke(payload)
     if isinstance(tool_result, str):
         return tool_result
     return str(tool_result)
@@ -218,12 +225,20 @@ async def search_product(state: AgentGraphState) -> dict[str, Any]:
 
     extraction = state.last_extraction
     query = ""
+    size: str | None = None
+    color: str | None = None
     if extraction and extraction.product_query:
         query = extraction.product_query.query or extraction.product_query.product_name or ""
+        size = extraction.product_query.size
+        color = extraction.product_query.color
     if not query.strip():
         query = state.incoming_message
 
-    raw_result = await _invoke_product_search(query.strip())
+    raw_result = await _invoke_product_search(
+        query.strip(),
+        size=size,
+        color=color,
+    )
     if _is_tool_error(raw_result):
         return {
             "response_text": (
@@ -276,7 +291,11 @@ async def resolve_and_validate_stock(state: AgentGraphState) -> dict[str, Any]:
     resolved_items: list[ResolvedSaleItem] = []
 
     for item in extraction.items:
-        raw_result = await _invoke_product_search(_build_item_search_query(item))
+        raw_result = await _invoke_product_search(
+            _build_item_search_query(item),
+            size=item.size,
+            color=item.color,
+        )
         if _is_tool_error(raw_result):
             return {
                 "conversation_state": AgentConversationState.IDLE,

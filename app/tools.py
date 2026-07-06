@@ -8,12 +8,22 @@ from app.schemas import CreateSalePayload, InventoryCheckResult, SaleConsolidati
 
 
 @tool
-async def buscar_producto_semantico(query: str) -> str:
+async def buscar_producto_semantico(
+    query: str,
+    size: str | None = None,
+    color: str | None = None,
+) -> str:
     """Usa esta herramienta cuando el usuario pregunte por un producto,
-    sus características, precios o disponibilidad. Consulta el catálogo del backend de negocio."""
+    sus características, precios o disponibilidad. Consulta el catálogo del backend de negocio.
+    Los parámetros size y color son filtros exactos opcionales del catálogo .NET
+    (parámetros independientes de query, no texto concatenado)."""
 
     search_url = f"{settings.NET_BACKEND_URL}/api/products/variants/search"
-    params = {"query": query, "onlyAvailable": True}
+    params: dict[str, str | bool] = {"query": query, "onlyAvailable": True}
+    if size:
+        params["size"] = size
+    if color:
+        params["color"] = color
 
     async with httpx.AsyncClient(timeout=settings.NET_BACKEND_TIMEOUT_SECONDS) as client:
         try:
