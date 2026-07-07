@@ -104,6 +104,37 @@ def _build_item_search_query(item: ExtractedOrderItem) -> str:
     return "producto"
 
 
+_COLOR_CANONICAL_FORMS: dict[str, str] = {
+    "negro": "negro",
+    "negra": "negro",
+    "rojo": "rojo",
+    "roja": "rojo",
+    "blanco": "blanco",
+    "blanca": "blanco",
+    "amarillo": "amarillo",
+    "amarilla": "amarillo",
+    "morado": "morado",
+    "morada": "morado",
+    "café": "café",
+    "cafe": "café",
+    "marrón": "café",
+    "marron": "café",
+    "rosa": "rosa",
+    "rosada": "rosa",
+    "dorado": "dorado",
+    "dorada": "dorado",
+    "plateado": "plateado",
+    "plateada": "plateado",
+}
+
+
+def _normalize_color_term(value: str) -> str:
+    normalized = value.strip().lower()
+    if not normalized:
+        return normalized
+    return _COLOR_CANONICAL_FORMS.get(normalized, normalized)
+
+
 def _filter_item_matches(
     item: ExtractedOrderItem,
     matches: list[dict[str, Any]],
@@ -125,10 +156,12 @@ def _filter_item_matches(
         ]
 
     if item.color:
+        normalized_item_color = _normalize_color_term(item.color)
         filtered = [
             match
             for match in filtered
-            if item.color.lower() in str(match.get("colorName", "")).lower()
+            if normalized_item_color
+            in _normalize_color_term(str(match.get("colorName", "")))
         ]
 
     active_matches = [
@@ -170,7 +203,7 @@ async def _invoke_product_search(
     if size:
         payload["size"] = size
     if color:
-        payload["color"] = color
+        payload["color"] = _normalize_color_term(color)
     tool_result = await buscar_producto_semantico.ainvoke(payload)
     if isinstance(tool_result, str):
         return tool_result
