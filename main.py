@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException
 from google.genai.errors import ClientError
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
+
+from app.config import settings
 
 from app.graph import build_thread_config, compiled_graph
 from app.nodes import to_contract_state
@@ -36,7 +39,10 @@ async def root() -> dict[str, str]:
     }
 
 
-_session_locks: dict[str, asyncio.Lock] = {}
+# Locks por sessionId con timestamp de último uso (monotonic). La evicción perezosa en
+# _get_session_lock evita fuga de memoria en sesiones de larga duración, sin afectar
+# la garantía de exclusión mutua por sesión activa (nunca se elimina un lock locked()).
+_session_locks: dict[str, tuple[asyncio.Lock, float]] = {}
 _locks_guard = asyncio.Lock()
 
 
@@ -52,13 +58,33 @@ def _is_gemini_rate_limit_error(exc: BaseException) -> bool:
     return False
 
 
+def _evict_stale_locks() -> None:
+    """Elimina locks inactivos cuyo TTL expiró. Debe invocarse bajo _locks_guard."""
+
+    now = time.monotonic()
+    ttl = settings.SESSION_LOCK_TTL_SECONDS
+    stale_session_ids = [
+        session_id
+        for session_id, (lock, last_used) in _session_locks.items()
+        if not lock.locked() and (now - last_used) > ttl
+    ]
+    for session_id in stale_session_ids:
+        del _session_locks[session_id]
+
+
 async def _get_session_lock(session_id: str) -> asyncio.Lock:
     """Obtiene o crea el lock de una sesión protegiendo el dict contra condiciones de carrera."""
 
     async with _locks_guard:
+        _evict_stale_locks()
+        now = time.monotonic()
         if session_id not in _session_locks:
-            _session_locks[session_id] = asyncio.Lock()
-        return _session_locks[session_id]
+            lock = asyncio.Lock()
+            _session_locks[session_id] = (lock, now)
+        else:
+            lock, _ = _session_locks[session_id]
+            _session_locks[session_id] = (lock, now)
+        return lock
 
 
 async def _process_chat_turn(request: AgentChatRequest) -> AgentChatResponse:

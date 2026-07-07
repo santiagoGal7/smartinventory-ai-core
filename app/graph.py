@@ -48,6 +48,10 @@ workflow.add_edge("resolve_and_validate_stock", END)
 workflow.add_edge("confirmation_gate", END)
 workflow.add_edge("general_response", END)
 
+# TODO: MemorySaver acumula checkpoints por thread_id sin expiración (misma fuga de memoria
+# potencial que _session_locks). LangGraph no expone eviction por TTL en MemorySaver; evaluar
+# migrar a un checkpointer con backend persistente (ej. SqliteSaver) si el proyecto crece
+# más allá del entorno académico.
 checkpointer = MemorySaver()
 compiled_graph = workflow.compile(checkpointer=checkpointer)
 

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     NET_BACKEND_URL: str = "http://localhost:5083"
     NET_BACKEND_TIMEOUT_SECONDS: float = 5.0
+    SESSION_LOCK_TTL_SECONDS: float = 3600.0
     GOOGLE_API_KEY: str = Field(
         ...,
         description="API key de Google AI Studio (Gemini).",
